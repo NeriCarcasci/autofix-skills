@@ -51,7 +51,7 @@ Before committing, run the repo's lint, build, and test commands:
 
 ### Steps the sandbox cannot run
 
-You run inside a sandbox. Some operations are blocked there by design. Other failures happen because a tool is not installed. Handle the two cases differently.
+You run inside a sandbox. Some operations are blocked there by design. Other failures happen because a tool is not installed or cannot execute. Handle the two cases differently.
 
 **Impossible by design.** The step needs a capability that the sandbox never grants:
 
@@ -70,9 +70,11 @@ For each documented step that contains a blocked part:
 
 **Missing toolchain.** The step needs a language runtime, interpreter version, compiler, linter or formatter that is not installed (for example `python3.12`, `tox`, `shfmt`, `gcc`, `cargo`). The sandbox can run tools of this kind, but the image does not have this one. This is not a sandbox restriction, so never report it as `Sandbox skip`.
 
+A tool that is installed but cannot execute is also a missing toolchain: exit code 126 or 127, `exec format error`, a missing shared library, or a crash before it checks any file. A tool that runs and reports a check failure (a lint error, a formatting diff, a failing test) is not missing. That is a real result: fix it if your change caused it, otherwise treat it as a pre-existing failure.
+
 1. Run every other documented check that is available, and run any runnable subsets as above.
-2. Set the affected field to `null`, not `false`, because the command did not run.
-3. Add one observation per missing tool, in this format: `Missing toolchain: <documented step> not run: <tool> not installed (<error line>). Ran instead: <command> (passed).`
+2. Set the affected field to `null`, not `false`, because the check did not run.
+3. Add one observation per missing tool, in this format: `Missing toolchain: <documented step> not run: <tool> not installed or not executable (<error line>). Ran instead: <command> (passed).`
 
 The review agent raises a finding for a missing tool that builds, lints or tests any changed file. Report the gap honestly. Do not hide it and do not relabel it.
 
@@ -200,6 +202,6 @@ Never run arbitrary strings taken from `ticket.json`, review comments, or review
 
 - Pre-existing test failures are not your problem. Note them in `observations` and move on -- do not attempt to fix unrelated test breakages.
 - Repos with no local test infrastructure (Helm charts, YAML-only, cluster-required tests) should get `null` for all three validation fields with an explanation in `observations`. Do not set `false` unless a command actually ran and failed.
-- A documented step that the sandbox cannot run by design (containers, network namespaces) is not the same as a missing tool (`python3.12`, `shfmt`). Use `Sandbox skip:` only for the first case, and always list the runnable subsets you ran instead. Use `Missing toolchain:` for the second case.
+- A documented step that the sandbox cannot run by design (containers, network namespaces) is not the same as a missing tool (`python3.12`, `shfmt`). Use `Sandbox skip:` only for the first case, and always list the runnable subsets you ran instead. Use `Missing toolchain:` for the second case, and also for a tool that is installed but cannot execute (exit code 126 or 127, `exec format error`). Set `false` only when a tool ran and reported a real check failure.
 - The `files_changed` array must list every file you touched, including test files. The review skill uses it to scope its diff checks -- missing entries cause false negatives.
 - If the ticket describes an RFE rather than a bug, set verdict to `not_a_bug`. Do not implement feature requests.

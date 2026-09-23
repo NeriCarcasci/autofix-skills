@@ -67,7 +67,7 @@ Read the verdict file at `autofix-output/.autofix-verdict.json`. This is the aut
 - If the file does not exist, flag a critical finding: "No verdict file found -- implement skill may not have run."
 - If `files_changed` is empty, `null` values for all three fields are acceptable — no code changes to validate.
 - If `files_changed` is non-empty, evaluate each field using the same rule:
-  - `false` → critical finding (that step ran and failed).
+  - `false` → critical finding (that step ran and failed). Exception: if the only failure is a tool that could not execute (exit code 126 or 127, `exec format error`, a missing shared library, a crash before any check ran), the step did not run. Classify it as a missing toolchain, as described under `null` below.
   - `true` → pass.
   - `null` → find the explanation for that step in the `observations` array, then classify it:
     - **No local test infrastructure** (for example "repo has no linter", "tests require a running cluster", YAML-only repo): accept `null`.
@@ -77,7 +77,7 @@ Read the verdict file at `autofix-output/.autofix-verdict.json`. This is the aut
       3. The subsets are complete. Read the documented step's definition statically (Makefile recipe and prerequisite targets, `tox.ini`, `.pre-commit-config.yaml`) and confirm that every part that does not need the blocked capability is in the list.
 
       If any condition fails, flag a critical finding that names the skipped step and the missing or failed subset.
-    - **Missing toolchain** (observation starts with `Missing toolchain:`, or says that a language runtime, interpreter version, compiler, linter or formatter is not installed): flag a critical finding when the missing tool builds, lints or tests any file in `files_changed`. Name the tool and the step that could not run. Accept `null` only when the tool covers none of the changed files (for example `shfmt` is missing and no shell script changed). A missing tool is never a sandbox skip, even when the observation calls it one.
+    - **Missing toolchain** (observation starts with `Missing toolchain:`, or says that a language runtime, interpreter version, compiler, linter or formatter is not installed or cannot execute): flag a critical finding when the missing tool builds, lints or tests any file in `files_changed`. Name the tool and the step that could not run. Accept `null` only when the tool covers none of the changed files (for example `shfmt` is missing and no shell script changed). A missing tool is never a sandbox skip, even when the observation calls it one.
     - **No explanation**: flag a critical finding: that step was not run and no justification was provided.
 - Apply this rule identically to `lint_passed`, `build_passed`, and `tests_passed`. Do not treat any of the three differently.
 
