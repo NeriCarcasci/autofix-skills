@@ -36,6 +36,10 @@ Known failure patterns from this repo's history. Update this file when fixing bu
 - **Likely cause**: `state.py` is not advancing phases, or merge_findings produces new findings each cycle that the implement agent reacts to.
 - **Where to look**: `scripts/state.py` phase transitions, `scripts/merge_findings.py`
 
+### Correct fix ends `blocked` because a validation step cannot run in the sandbox
+- **Likely cause**: The repo documents an aggregate check (for example `make linter`) that needs a container runtime or `unshare --net`, which the sandbox blocks by design. Before RHAIFIRST-653, the implement agent reported `lint_passed: false`, the review agent raised a critical finding, and the loop used all three implement passes. Now the implement agent runs the runnable subsets and reports `null` with a `Sandbox skip:` observation, and the review agent accepts that only when every runnable subset passed. If the observation says `Missing toolchain:` (for example no `python3.12` or `shfmt`, or a binary that exits 126 or 127 with `exec format error`), the block is expected: the tool belongs in the sandbox image (agentic-ci), not in the prompts.
+- **Where to look**: verdict `observations` for `Sandbox skip:` or `Missing toolchain:` entries, `prompts/implement-agent.md` Step 5, `prompts/review-agent.md` Step 2
+
 ### Agent ignores unrelated CI failures
 - **Likely cause**: Before PR #24, agents would try to fix CI failures unrelated to their change. Now the prompt instructs agents to ignore pre-existing failures.
 - **Where to look**: `prompts/` implement and review prompts, CI failure handling instructions
