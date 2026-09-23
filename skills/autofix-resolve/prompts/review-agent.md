@@ -69,7 +69,16 @@ Read the verdict file at `autofix-output/.autofix-verdict.json`. This is the aut
 - If `files_changed` is non-empty, evaluate each field using the same rule:
   - `false` → critical finding (that step ran and failed).
   - `true` → pass.
-  - `null` → check the `observations` array for an explanation of why the step was skipped (e.g., "repo has no linter", "tests require a running cluster"). If an explanation exists, accept `null`. If no explanation exists, flag a critical finding: that step was not run and no justification was provided.
+  - `null` → find the explanation for that step in the `observations` array, then classify it:
+    - **No local test infrastructure** (for example "repo has no linter", "tests require a running cluster", YAML-only repo): accept `null`.
+    - **Sandbox skip** (observation starts with `Sandbox skip:`): accept `null` only when all of these are true:
+      1. The skipped part needs a capability that the sandbox blocks by design: a container runtime or image build (`podman`, `docker`, `buildah`), a network namespace or other privileged kernel feature (`unshare --net`, `ip netns`, `mount`), or a running cluster or remote service.
+      2. The observation lists the runnable subsets that ran instead, and each one passed.
+      3. The subsets are complete. Read the documented step's definition statically (Makefile recipe and prerequisite targets, `tox.ini`, `.pre-commit-config.yaml`) and confirm that every part that does not need the blocked capability is in the list.
+
+      If any condition fails, flag a critical finding that names the skipped step and the missing or failed subset.
+    - **Missing toolchain** (observation starts with `Missing toolchain:`, or says that a language runtime, interpreter version, compiler, linter or formatter is not installed): flag a critical finding when the missing tool builds, lints or tests any file in `files_changed`. Name the tool and the step that could not run. Accept `null` only when the tool covers none of the changed files (for example `shfmt` is missing and no shell script changed). A missing tool is never a sandbox skip, even when the observation calls it one.
+    - **No explanation**: flag a critical finding: that step was not run and no justification was provided.
 - Apply this rule identically to `lint_passed`, `build_passed`, and `tests_passed`. Do not treat any of the three differently.
 
 ## Step 3: Semantic review
@@ -134,4 +143,5 @@ uv run --script ${CLAUDE_SKILL_DIR}/scripts/write_json.py \
 - If `files_changed` is empty and the verdict is a no-code-change type (`already_fixed`, `not_a_bug`, etc.), mechanical checks are correctly skipped. Do not flag this as an error.
 - Debug print detection (`console.log`, `print(`, etc.) may match legitimate logging. Check the surrounding context before flagging -- only flag prints that look like debugging artifacts.
 - The diff range `HEAD~1..HEAD` assumes the implement skill committed exactly once. In multi-iteration resolve runs where implement commits more than once, only the latest commit is diffed. The verdict's `files_changed` (the primary source) covers all changes regardless of commit count, so this only matters when falling back to git.
+- A documented step that the sandbox cannot run by design does not block the review when all its runnable subsets passed. A missing tool for the changed code always blocks it. Do not let a well-worded explanation turn a missing tool into an accepted skip.
 - Do not flag scope creep for changes to shared helpers, types, or test utilities when those files are legitimately needed by the fix.
