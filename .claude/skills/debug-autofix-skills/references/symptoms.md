@@ -32,6 +32,10 @@ Known failure patterns from this repo's history. Update this file when fixing bu
 
 ## Review orchestration
 
+### CVE skill tries to clone, push, or create its own PR
+- **Likely cause**: An obsolete multi-repository CVE prompt or state-machine asset is installed. The current `autofix-cve-resolve` skill handles exactly one trusted checkout and delegates only local implementation and review; the outer Autofix runner owns all remote operations.
+- **Where to look**: `skills/autofix-cve-resolve/SKILL.md`, `prompts/fix-agent.md`, and `.autofix-context/cve-remediation.json`
+
 ### Review loop doesn't converge (agent keeps iterating)
 - **Likely cause**: `state.py` is not advancing phases, or merge_findings produces new findings each cycle that the implement agent reacts to.
 - **Where to look**: `scripts/state.py` phase transitions, `scripts/merge_findings.py`

@@ -9,8 +9,8 @@ Claude Code plugin providing orchestrator skills, prompt files, and state manage
 skills/                      Skill directories (each contains SKILL.md + prompts/ + scripts/)
   autofix-resolve/           Orchestrator: implement → review → evaluate loop
     scripts/                 state.py, merge_findings.py, write_json.py
-  autofix-cve-resolve/       CVE orchestrator: state-machine dispatcher
-    scripts/                 state.py, cve_pipeline.py, scan.sh, verify.sh, check-existing-prs.sh, write_json.py
+  autofix-cve-resolve/       Trusted one-CVE local implement/review orchestrator
+    scripts/                 state.py, write_json.py
   autofix-triage/            Standalone bug readiness assessment
     scripts/                 write_json.py
   autofix-repo-resolve/      Repo URL disambiguation for multi-URL tickets
